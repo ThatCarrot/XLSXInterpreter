@@ -288,65 +288,7 @@ std::string XLSXExtractor_t1(std::vector<std::string>* xlsxFiles) {
     // filename     files/typex/YYYY/export_XXXXXXXXXX.XXXXXXX.xlsx
     // xlsx format  ID|Url|Price|Title|Place|TOP|Link_id|ExportStatus|
 
-    std::string finalString = 
-        "INSERT INTO nome_tabella (time_of_publishing, time_of_scraping, link, place, prezzo, titolo, site_id, product_id, note) \n VALUES \n";
-
-    for (std::string file : *xlsxFiles) {
-        Book* book = loadFile(file);
-        Sheet* sheet = book->getSheet(0);
-
-        std::cout << "Reading " << file << "\n";
-        std::cout << "lastRow: " << sheet->lastRow() << "\n";
-
-        for (int row = 1; row < sheet->lastRow(); row++) {
-            try {
-                std::string time_of_publishing, time_of_scraping, link, place, price, title, site_id, product_id, note;
-                std::wstring wStr;
-
-                // get link
-                wStr = sheet->readStr(row, 1) == NULL ? L"_" : sheet->readStr(row, 1);
-                link = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
-
-                // get price
-                wStr = sheet->readStr(row, 2) == NULL ? L"_" : sheet->readStr(row, 2);
-                price = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
-
-                // get title
-                wStr = sheet->readStr(row, 3) == NULL ? L"_" : sheet->readStr(row, 3);
-                title = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
-
-                // get place
-                wStr = sheet->readStr(row, 4) == NULL ? L"_" : sheet->readStr(row, 4);
-                place = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
-
-                // get TOP
-                wStr = sheet->readStr(row, 5) == NULL ? L"_" : sheet->readStr(row, 5);
-                time_of_publishing = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
-
-                // get TOS
-                std::string unixDateTimeStr = extractUnixDateTime(file);
-                time_of_scraping = '\'' + unixDateTimeStr + '\'';
-
-                // get link_id
-                wStr = sheet->readStr(row, 6) == NULL ? L"_" : sheet->readStr(row, 6);
-                note = "old link_id:" + '\'' + std::string(wStr.begin(), wStr.end()) + "\' ";
-                note += "file:" + '\'' + file + '\'';
-
-                // compose finalString
-                finalString += '(' + time_of_publishing + ',' + time_of_scraping + ',' + link + ',' + place + ',' + price + ',' + title + ',' + site_id + ',' + product_id + ',' + note + "),\n";
-            }
-            catch (std::exception& exc) {
-                std::cout << "Exception: " << exc.what() << "\n";
-                std::cout << "LibXL Error Message: " << book->errorMessage() << "\n";
-            }
-            catch (...) {
-                std::cout << "LibXL Error Message: " << book->errorMessage() << "\n";
-            }
-        }
-
-    }
-
-    return finalString;
+    return "";
 
 }
 
@@ -365,4 +307,257 @@ std::string extractUnixDateTime(const std::string& inputString) {
     else {
         return inputString;
     }
+}
+
+std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& logFile) {
+
+    // "INSERT INTO nome_tabella (time_of_publishing, time_of_scraping, link, place, prezzo, titolo, note) \n VALUES \n"
+
+    //Load XLSX
+    Book* book = loadFile(fileName);
+    Sheet* sheet = book->getSheet(0);
+
+    //Build vector
+    std::vector<std::string>* entries = new std::vector<std::string>();
+
+    //Read file    
+    for (int row = 1; row < sheet->lastRow(); row++) {
+
+        std::wstring wStr;
+        std::string link, price, title, place, time_of_publishing, time_of_scraping, note, finalString, site_id, product_id;
+
+        // get Time info from file
+        std::string unixDateTimeStr = fileName;
+        size_t pos = unixDateTimeStr.find('.');
+        unixDateTimeStr = unixDateTimeStr.substr(0, pos);
+        pos = unixDateTimeStr.find_last_of("_");
+        unixDateTimeStr = unixDateTimeStr.substr(pos + 1);
+        double unixTimestamp;
+        std::istringstream(unixDateTimeStr) >> unixTimestamp;
+        std::time_t timestamp = static_cast<std::time_t>(unixTimestamp);
+        std::tm* tmInfo = std::localtime(&timestamp);
+
+        // get link *
+        {
+            wStr = sheet->readStr(row, 1) == NULL ? L"_" : sheet->readStr(row, 1);
+            if (wStr == L"_") {
+                ignoreFile(logFile, 1, fileName, row);
+                continue;
+            }
+            link = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
+        }
+
+        // get price *
+        {
+            wStr = sheet->readStr(row, 2) == NULL ? L"_" : sheet->readStr(row, 2);
+            if (wStr == L"_") {
+                ignoreFile(logFile, 2, fileName, row);
+                continue;
+            }
+            price = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
+            if (price.find("\\n") != std::string::npos)
+                continue;
+            if (price.find("GRATIS") != std::string::npos)
+                continue;
+        }
+
+        // get title *
+        {
+            wStr = sheet->readStr(row, 3) == NULL ? L"_" : sheet->readStr(row, 3);
+            if (wStr == L"_") {
+                ignoreFile(logFile, 3, fileName, row);
+                continue;
+            }
+            title = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
+            size_t pos = title.find('\n');
+            if (pos != std::string::npos) {
+                title.replace(pos, 1, 1, ' ');
+            }
+        }
+
+        // get place
+        {
+            wStr = sheet->readStr(row, 4) == NULL ? L"_" : sheet->readStr(row, 4);
+            place = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
+        }
+
+        // get TOS
+        {
+            if (tmInfo != nullptr) {
+                int year = tmInfo->tm_year + 1900;
+                int month = tmInfo->tm_mon + 1;
+                int day = tmInfo->tm_mday;
+                int hour = tmInfo->tm_hour;
+                int minute = tmInfo->tm_min;
+
+                std::stringstream formattedDateTime;
+                formattedDateTime << std::setfill('0') << std::setw(2) << day << "/"
+                    << std::setfill('0') << std::setw(2) << month << "/"
+                    << year << " " << std::setfill('0') << std::setw(2) << hour << ":"
+                    << std::setfill('0') << std::setw(2) << minute;
+
+                time_of_scraping = '\'' + formattedDateTime.str() + '\'';
+
+            }
+        }
+
+        // get TOP
+        {
+            wStr = sheet->readStr(row, 5) == NULL ? L"_" : sheet->readStr(row, 5);
+            time_of_publishing = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
+            if (time_of_publishing.find("(") != std::string::npos) // is place, set as TOS
+                time_of_publishing = time_of_scraping;
+            else if (time_of_publishing.find("Oggi") != std::string::npos) {// replace date
+                if (tmInfo != nullptr) {
+                    int year = tmInfo->tm_year + 1900;
+                    int month = tmInfo->tm_mon + 1;
+                    int day = tmInfo->tm_mday;
+                    int hour = std::stoi(time_of_publishing.substr(11, 2));
+                    int minute = std::stoi(time_of_publishing.substr(14, 2));
+
+                    std::stringstream formattedDateTime;
+                    formattedDateTime << std::setfill('0') << std::setw(2) << day << "/"
+                        << std::setfill('0') << std::setw(2) << month << "/"
+                        << year << " " << std::setfill('0') << std::setw(2) << hour << ":"
+                        << std::setfill('0') << std::setw(2) << minute;
+
+                    time_of_publishing = '\'' + formattedDateTime.str() + '\'';
+                }
+            }
+            else {
+                for (int i = 0; i < 2; i++) {
+                    size_t pos = time_of_publishing.find('-');
+                    if (pos != std::string::npos) {
+                        time_of_publishing.replace(pos, 1, 1, '/');
+                    }
+                }
+            }
+        }
+
+        // get note
+        {
+            note = fileName;
+            note += ":" + std::to_string(row);
+        }
+
+        // compose finalString
+        finalString += '(' + time_of_publishing + ',' + time_of_scraping + ',' + link + ',' + place + ',' + price + ',' + title + ',' + note + "),\n";
+
+        // push into vector
+        entries->push_back(finalString);
+
+    }
+
+    return entries;
+}
+
+std::vector<std::string>* getEntries_t2(std::string fileName, std::ofstream& logFile) {
+
+    // "INSERT INTO nome_tabella (time_of_publishing, time_of_scraping, link, place, prezzo, titolo, note) \n VALUES \n"
+
+    //Load XLSX
+    Book* book = loadFile(fileName);
+    Sheet* sheet = book->getSheet(0);
+
+    //Build vector
+    std::vector<std::string>* entries = new std::vector<std::string>();
+
+    //Read file    
+    for (int row = 1; row < sheet->lastRow(); row++) {
+
+        std::wstring wStr;
+        std::string link, price, title, place, time_of_publishing, time_of_scraping, note, finalString;
+
+        // get Time info from file
+
+
+        // get link *
+        {
+            wStr = sheet->readStr(row, 4) == NULL ? L"_" : sheet->readStr(row, 4);
+            if (wStr == L"_") {
+                ignoreFile(logFile, 1, fileName, row);
+                continue;
+            }
+            link = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
+        }
+
+        // get price *
+        {
+            wStr = sheet->readStr(row, 3) == NULL ? L"_" : sheet->readStr(row, 3);
+            if (wStr == L"_") {
+                ignoreFile(logFile, 2, fileName, row);
+                continue;
+            }
+            price = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
+            if (price.find("\\n") != std::string::npos) {
+                ignoreFile(logFile, 2, fileName, row);
+                continue;
+            }
+            if (price.find("GRATIS") != std::string::npos) {
+                ignoreFile(logFile, 2, fileName, row);
+                continue;
+            }
+        }
+
+        // get title *
+        {
+            wStr = sheet->readStr(row, 0) == NULL ? L"_" : sheet->readStr(row, 0);
+            if (wStr == L"_") {
+                ignoreFile(logFile, 3, fileName, row);
+                continue;
+            }
+            title = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
+            size_t pos = title.find('\n');
+            if (pos != std::string::npos) {
+                title.replace(pos, 1, 1, ' ');
+            }
+        }
+
+        // get place
+        {
+            wStr = sheet->readStr(row, 1) == NULL ? L"_" : sheet->readStr(row, 1);
+            place = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
+        }
+
+        // get TOP
+        {
+            wStr = sheet->readStr(row, 2) == NULL ? L"_" : sheet->readStr(row, 5);
+            time_of_publishing = '\'' + std::string(wStr.begin(), wStr.end()) + '\'';
+        }
+
+        // get note
+        {
+            note = fileName;
+            note += ":" + std::to_string(row);
+        }
+
+        // compose finalString
+        finalString += '(' + time_of_publishing + ',' + time_of_scraping + ',' + link + ',' + place + ',' + price + ',' + title + ',' + note + "),\n";
+
+        // push into vector
+        entries->push_back(finalString);
+
+    }
+
+    return entries;
+}
+
+void ignoreFile(std::ofstream& logFile, int state, std::string filename, int row) {
+
+    logFile << "Ignored line " << row << " in file " << filename;
+    switch (state) {
+    default:
+        logFile << " -Unhandled\n";
+        break;
+    case 1:
+        logFile << " -Missing link\n";
+        break;
+    case 2:
+        logFile << " -Missing price\n";
+        break;
+    case 3:
+        logFile << " -Missing title\n";
+        break;
+    }
+
 }

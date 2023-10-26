@@ -2,29 +2,53 @@
 
 int main() {
 
-	std::vector<std::string>* files_t1_2023 = getXlsxFiles("files/type1/2023");
+	std::vector<std::string>* files_t1_2023 = getXlsxFiles("files/type1");
+	std::ofstream logFile_t1("log_t1.txt");
+	std::ofstream outputFile_t1("output_t1.txt");
+	std::string finalString_t1 = "INSERT INTO nome_tabella (time_of_publishing, time_of_scraping, link, place, prezzo, titolo, note) \n VALUES \n";
 
-	std::vector<std::string>* files_t2_2022 = getXlsxFiles("files/type2/2022");
-	std::vector<std::string>* files_t2_2023 = getXlsxFiles("files/type2/2023");
+	std::vector<std::string>* files_t2_2022 = getXlsxFiles("files/type2");
+	std::ofstream logFile_t2("log_t2.txt");
+	std::ofstream outputFile_t2("output_t2.txt");
+	std::string finalString_t2 = "INSERT INTO nome_tabella (time_of_publishing, time_of_scraping, link, place, prezzo, titolo, note) \n VALUES \n";
 
-	for (std::string line : *files_t2_2022) {
-		std::cout << line << "\n";
+	for (std::string file : *files_t1_2023) {
+		
+		std::cout << file << "\n";
+
+		// get all entries
+		std::vector<std::string>* entries = getEntries_t1(file, logFile_t1);
+
+		// compose finalString
+		for (std::string entry : *entries) {
+			finalString_t1 += entry;
+		}
+
+		// delete vector
+		delete entries;
 	}
+	outputFile_t1 << finalString_t1;
+	outputFile_t1.close();
+	logFile_t1.close();
 
-	std::vector<std::string> commands;
+	for (std::string file : *files_t2_2022) {
 
-	commands.push_back(XLSXExtractor_t1(files_t1_2023));
+		std::cout << file << "\n";
 
-	std::ofstream file("output_t1_2023.txt");
-	
-	if (!file.is_open()) {
-		std::cerr << "Impossibile aprire il file." << std::endl;
-		return 1; // Termina il programma con un codice di errore
+		// get all entries
+		std::vector<std::string>* entries = getEntries_t2(file, logFile_t2);
+
+		// compose finalString
+		for (std::string entry : *entries) {
+			finalString_t2 += entry;
+		}
+
+		// delete vector
+		delete entries;
 	}
-
-	file << commands.at(0);
-
-	file.close();
+	outputFile_t2 << finalString_t2;
+	outputFile_t2.close();
+	logFile_t2.close();
 
 	system("pause");
 	return 0;

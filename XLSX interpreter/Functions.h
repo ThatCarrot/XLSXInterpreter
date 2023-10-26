@@ -7,22 +7,9 @@
 #include <iostream>
 #include <regex>
 #include <ctime>
-#include <fstream> 
+#include <fstream>
 
 using namespace libxl;
-
-class entry {
-	entry(libxl::Sheet& src, int row);
-	std::string time_of_publishing; 
-	std::string time_of_scraping; 
-	std::string link; 
-	std::string place; 
-	std::string price; 
-	std::string title; 
-	std::string site_id; 
-	std::string product_id;
-	std::string note;
-};
 
 std::vector<std::string>* getXlsxFiles(std::string folder);
 Book* loadFile(std::string name);
@@ -38,3 +25,6 @@ std::vector<std::string>* groupByYear_T2(std::vector<std::string>* input, int mo
 std::string XLSXExtractor_t1(std::vector<std::string>* files);
 std::string XLSXExtractor_t2(std::vector<std::string>* files);
 std::string extractUnixDateTime(const std::string& inputString);
+std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& logFile);
+std::vector<std::string>* getEntries_t2(std::string fileName, std::ofstream& logFile);
+void ignoreFile(std::ofstream& logFile, int state, std::string filename, int row);
