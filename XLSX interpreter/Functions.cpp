@@ -1,5 +1,6 @@
 #include "Functions.h"
 
+// Used for firt study
 std::vector<std::string>* getColummnNames(Sheet* sheet) {
 
     std::vector<std::string>* columnNames = new std::vector<std::string>();
@@ -53,6 +54,7 @@ std::vector<std::string>* getXlsxFiles(std::string folder) {
     return xlsxFiles;
 }
 
+// Old Prototype
 std::vector<std::string>* XLSXInterpreter()
 {
     std::cout << "Starting XLSX interpreter\n";
@@ -206,6 +208,7 @@ std::vector<std::string>* filterType2(std::vector<std::string>* input) {
     return result;
 }
 
+// Not Used
 std::vector<std::string>* groupByMonth_T1(std::vector<std::string>* input, int month) {
     // sample: <files/export_1683662202.2087388.xlsx>
 
@@ -229,6 +232,7 @@ std::vector<std::string>* groupByMonth_T1(std::vector<std::string>* input, int m
 
 }
 
+// Not Used
 std::vector<std::string>* groupByMonth_T2(std::vector<std::string>* input, int month) {
     // sample: <files/type2/31-10-2022 12-14-01.xlsx> (DD-MM-YYYY)
 
@@ -286,18 +290,6 @@ std::vector<std::string>* groupByYear_T2(std::vector<std::string>* input, int ye
 // VALUES('2023-09-27 10:00:00', '2023-09-27 12:30:00', 'http://www.example.com', 'Luogo di esempio', 99.99, 'Titolo di esempio', 1, 1, 'Nota di esempio');
 
 
-std::string XLSXExtractor_t1(std::vector<std::string>* xlsxFiles) {
-    // filename     files/typex/YYYY/export_XXXXXXXXXX.XXXXXXX.xlsx
-    // xlsx format  ID|Url|Price|Title|Place|TOP|Link_id|ExportStatus|
-
-    return "";
-
-}
-
-std::string XLSXExtractor_t2(std::vector<std::string>* files) {
-    return "";
-}
-
 std::string extractUnixDateTime(const std::string& inputString) {
     size_t posUnderscore = inputString.rfind('_');
     size_t posPunto = inputString.rfind('.');
@@ -314,7 +306,7 @@ std::string extractUnixDateTime(const std::string& inputString) {
 std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& logFile) {
 
     // "INSERT INTO nome_tabella (time_of_publishing, time_of_scraping, link, place, prezzo, titolo, note) \n VALUES \n"
-
+    
     //Load XLSX
     Book* book = loadFile(fileName);
     Sheet* sheet = book->getSheet(0);
@@ -330,7 +322,7 @@ std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& log
 
         // get Time info from file
         std::string unixDateTimeStr = fileName;
-        size_t pos = unixDateTimeStr.find('.');
+        size_t pos = unixDateTimeStr.find_last_of('.');
         unixDateTimeStr = unixDateTimeStr.substr(0, pos);
         pos = unixDateTimeStr.find_last_of("_");
         unixDateTimeStr = unixDateTimeStr.substr(pos + 1);
@@ -356,19 +348,21 @@ std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& log
                 ignoreFile(logFile, 2, fileName, row);
                 continue;
             }
-            std::string price_dirty = '\"' + std::string(wStr.begin(), wStr.end()) + '\"';
-            if (price_dirty.find("\\n") != std::string::npos)
+            std::string price_dirty = std::string(wStr.begin(), wStr.end());
+            if (price_dirty.find("\\n") != std::string::npos || price_dirty.find("GRATIS") != std::string::npos) {
+                ignoreFile(logFile, 2, fileName, row);
                 continue;
-            if (price_dirty.find("GRATIS") != std::string::npos)
-                continue;
+            }
 
             price = "";
-
             for (char character : price_dirty) {
                 if (character >= 0)
                     if (std::isdigit(character)) {
                         price += character;
                     }
+            }
+            if (price.length() == 0) {
+                price = "-1";
             }
 
         }
@@ -380,17 +374,43 @@ std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& log
                 ignoreFile(logFile, 3, fileName, row);
                 continue;
             }
-            title = '\"' + std::string(wStr.begin(), wStr.end()) + '\"';
-            size_t pos = title.find('\n');
-            if (pos != std::string::npos) {
-                title.replace(pos, 1, 1, ' ');
+
+            // Remove ' and "
+            size_t apostrohePos = title.find('\'');
+            while (apostrohePos != std::string::npos) {
+                title.replace(apostrohePos, 1, 1, ' ');
+                apostrohePos = title.find('\'');
             }
+            size_t doubleApostrohePos = title.find('\"');
+            while (doubleApostrohePos != std::string::npos) {
+                title.replace(doubleApostrohePos, 1, 1, ' ');
+                doubleApostrohePos = title.find('\"');
+            }
+
+            // Remove \n
+            size_t returnPos = title.find('\n');
+            while (returnPos != std::string::npos) {
+                title.replace(returnPos, 1, 1, ' ');
+                returnPos = title.find('\n');
+            }
+
+
+            // Have concat function, to avoid &
+            title = "CONCAT(\'" + std::string(wStr.begin(), wStr.end()) + "\')";
+
         }
 
         // get place
         {
             wStr = sheet->readStr(row, 4) == NULL ? L"_" : sheet->readStr(row, 4);
             place = '\"' + std::string(wStr.begin(), wStr.end()) + '\"';
+
+            // Remove '
+            size_t apostrohePos = place.find('\'');
+            if (apostrohePos != std::string::npos) {
+                place.replace(apostrohePos, 1, 1, ' ');
+            }
+
         }
 
         // get TOS
@@ -416,11 +436,12 @@ std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& log
         // get TOP
         {
             wStr = sheet->readStr(row, 5) == NULL ? L"_" : sheet->readStr(row, 5);
-            time_of_publishing = '\"' + std::string(wStr.begin(), wStr.end()) + '\"';
+            time_of_publishing = std::string(wStr.begin(), wStr.end());
 
-            if (time_of_publishing.find("(") != std::string::npos || time_of_publishing == "\"_\"") // is place or empty, set as TOS
+            if (time_of_publishing.find("(") != std::string::npos || time_of_publishing == "_") { // is place or empty, set as TOS
                 time_of_publishing = time_of_scraping;
-            
+            }
+
             else if (time_of_publishing.find("Oggi") != std::string::npos || time_of_publishing.find("Ieri") != std::string::npos) {// replace date
                 if (tmInfo != nullptr) {
                     int year = tmInfo->tm_year + 1900;
@@ -439,15 +460,15 @@ std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& log
                 }
             }
                        
-            else {
+            else { //
                 for (int i = 0; i < 2; i++) {
                     size_t pos = time_of_publishing.find('-');
                     if (pos != std::string::npos) {
                         time_of_publishing.replace(pos, 1, 1, '/');
 
-                        time_of_publishing = "STR_TO_DATE(\'" + time_of_publishing + "\', \'%d/%m/%Y %H:%i\')";
                     }
                 }
+                time_of_publishing = "STR_TO_DATE(\'" + time_of_publishing + "\', \'%d/%m/%Y %H:%i\')";
             }
         }
 
@@ -520,20 +541,20 @@ std::vector<std::string>* getEntries_t2(std::string fileName, std::ofstream& log
                 continue;
             }
             std::string price_dirty = std::string(wStr.begin(), wStr.end());
-            if (price_dirty.find("\\n") != std::string::npos) {
+            if (price_dirty.find("\\n") != std::string::npos || price_dirty.find("GRATIS") != std::string::npos) {
                 ignoreFile(logFile, 2, fileName, row);
                 continue;
             }
-            if (price_dirty.find("GRATIS") != std::string::npos) {
-                ignoreFile(logFile, 2, fileName, row);
-                continue;
-            }
-            price = "";
 
+            price = "";
             for (char character : price_dirty) {
-                if (std::isdigit(character)) {
-                    price += character;
-                }
+                if (character >= 0)
+                    if (std::isdigit(character)) {
+                        price += character;
+                    }
+            }
+            if (price.length() == 0) {
+                price = "-1";
             }
 
         }
@@ -545,17 +566,42 @@ std::vector<std::string>* getEntries_t2(std::string fileName, std::ofstream& log
                 ignoreFile(logFile, 3, fileName, row);
                 continue;
             }
-            title = '\"' + std::string(wStr.begin(), wStr.end()) + '\"';
-            size_t pos = title.find('\n');
-            if (pos != std::string::npos) {
-                title.replace(pos, 1, 1, ' ');
+            
+            // Remove ' and "
+            size_t apostrohePos = title.find('\'');
+            while (apostrohePos != std::string::npos) {
+                title.replace(apostrohePos, 1, 1, ' ');
+                apostrohePos = title.find('\'');
             }
+            size_t doubleApostrohePos = title.find('\"');
+            while (doubleApostrohePos != std::string::npos) {
+                title.replace(doubleApostrohePos, 1, 1, ' ');
+                doubleApostrohePos = title.find('\"');
+            }
+
+            // Remove \n
+            size_t returnPos = title.find('\n');
+            while (returnPos != std::string::npos) {
+                title.replace(returnPos, 1, 1, ' ');
+                returnPos = title.find('\n');
+            }
+
+            // Have concat function, to avoid &
+            title = "CONCAT(\'" + std::string(wStr.begin(), wStr.end()) + "\')";
+            
+
         }
 
         // get place
         {
             wStr = sheet->readStr(row, 1) == NULL ? L"_" : sheet->readStr(row, 1);
             place = '\"' + std::string(wStr.begin(), wStr.end()) + '\"';
+
+            // Remove '
+            size_t apostrohePos = place.find('\'');
+            if (apostrohePos != std::string::npos) {
+                place.replace(apostrohePos, 1, 1, ' ');
+            }
         }
 
         // get TOP
@@ -563,13 +609,7 @@ std::vector<std::string>* getEntries_t2(std::string fileName, std::ofstream& log
             wStr = sheet->readStr(row, 2) == NULL ? L"_" : sheet->readStr(row, 2);
             time_of_publishing = '\"' + std::string(wStr.begin(), wStr.end()) + '\"';
 
-            if (time_of_publishing.find("Oggi") != std::string::npos || time_of_publishing.find("Ieri") != std::string::npos) {// replace date
-                time_of_publishing.replace(1, 9, time_of_scraping.substr(1, 10));
-            }
-            
-            else { // set as TOS
-                time_of_publishing = time_of_scraping;
-            }
+            time_of_publishing = time_of_scraping;
         }
 
         // get note

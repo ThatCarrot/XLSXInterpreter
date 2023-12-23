@@ -2,15 +2,15 @@
 
 int main() {
 	
-	std::string baseString = "INSERT INTO nome_tabella (time_of_publishing, time_of_scraping, link, place, prezzo, titolo, note) \n VALUES \n";
+	std::string baseString = "INSERT INTO cvp.nome_tabella (time_of_publishing, time_of_scraping, link, place, prezzo, titolo, note) \n VALUES \n";
 
 	//type 1
-	std::ofstream logFile_t1("../output/log_t2.txt");
-	std::ofstream outputFile_t1("../output/output_t2.txt");
-	outputFile_t1 << baseString;
+	std::ofstream logFile_t1("../output/log_t1.txt");
+	std::ofstream outputFile_t1("../output/output_t1.txt");
 
 	std::vector<std::string>* files_t1_2023 = getXlsxFiles("../files/type1");
 	for (std::string file : *files_t1_2023) {
+		outputFile_t1 << baseString;
 		
 		// print what file we're working with
 		std::cout << file << "\n";
@@ -35,12 +35,12 @@ int main() {
 	logFile_t1.close();
 
 	//type 2
-	std::ofstream logFile_t2("../output/log_t1.txt");
-	std::ofstream outputFile_t2("../output/output_t1.txt");
-	outputFile_t2 << baseString;
+	std::ofstream logFile_t2("../output/log_t2.txt");
+	std::ofstream outputFile_t2("../output/output_t2.txt");
 
 	std::vector<std::string>* files_t2_2022 = getXlsxFiles("../files/type2");
 	for (std::string file : *files_t2_2022) {
+		outputFile_t2 << baseString;
 
 		// print what file we're working with
 		std::cout << file << "\n";
