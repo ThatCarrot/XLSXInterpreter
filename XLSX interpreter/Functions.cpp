@@ -1,38 +1,38 @@
 #include "Functions.h"
 
-// Used for firt study
-std::vector<std::string>* getColummnNames(Sheet* sheet) {
+// Used for first study
+//std::vector<std::string>* getColummnNames(XLSheet* sheet) {
+//
+//    std::vector<std::string>* columnNames = new std::vector<std::string>();
+//
+//    //Get all column names
+//    int row = sheet->firstRow();
+//    for (int col = sheet->firstCol() + 1; col < sheet->lastCol(); ++col)
+//    {
+//        if (sheet->cellType(row, col) != CELLTYPE_BLANK) {
+//            std::wstring cellName = sheet->readStr(row, col);
+//            columnNames->push_back(std::string(cellName.begin(), cellName.end()));
+//        }
+//    }
+//
+//    return columnNames;
+//
+//}
 
-    std::vector<std::string>* columnNames = new std::vector<std::string>();
-
-    //Get all column names
-    int row = sheet->firstRow();
-    for (int col = sheet->firstCol() + 1; col < sheet->lastCol(); ++col)
-    {
-        if (sheet->cellType(row, col) != CELLTYPE_BLANK) {
-            std::wstring cellName = sheet->readStr(row, col);
-            columnNames->push_back(std::string(cellName.begin(), cellName.end()));
-        }
-    }
-
-    return columnNames;
-
-}
-
-Book* loadFile(std::string inputFile) {
-
-    Book* book = xlCreateXMLBook();
-    std::wstring wstring(inputFile.begin(), inputFile.end());
-
-    if (!book->load(wstring.c_str())) {
-        std::cout << "Could not load file\n";
-        std::cout << book->errorMessage() << "\n";
-        return nullptr;
-    }
-
-    return book;
-
-}
+//Book* loadFile(std::string inputFile) {
+//
+//    Book* book = xlCreateXMLBook();
+//    std::wstring wstring(inputFile.begin(), inputFile.end());
+//
+//    if (!book->load(wstring.c_str())) {
+//        std::cout << "Could not load file\n";
+//        std::cout << book->errorMessage() << "\n";
+//        return nullptr;
+//    }
+//
+//    return book;
+//
+//}
 
 
 std::vector<std::string>* getXlsxFiles(std::string folder) {
@@ -40,7 +40,7 @@ std::vector<std::string>* getXlsxFiles(std::string folder) {
     std::vector<std::string>* xlsxFiles = new std::vector<std::string>();
 
     for (const auto& entry : std::filesystem::directory_iterator(folder, std::filesystem::directory_options::skip_permission_denied)) {
-        
+
         std::string file = entry.path().generic_string();
 
 
@@ -55,24 +55,24 @@ std::vector<std::string>* getXlsxFiles(std::string folder) {
 }
 
 // Old Prototype
-std::vector<std::string>* XLSXInterpreter()
-{
-    std::cout << "Starting XLSX interpreter\n";
-
-    std::vector<std::string>* xlsxFiles = getXlsxFiles("files");
-
-    for (std::string file : *xlsxFiles) {
-        Book* book = loadFile(file);
-        auto columns = getColummnNames(book->getSheet(0));
-        for (std::string column : *columns) {
-            std::cout << column << "|";
-        }
-        std::cout << "\t\tfile: " << file << "\n";
-    }
-
-    return xlsxFiles;
-
-}
+//std::vector<std::string>* XLSXInterpreter()
+//{
+//    std::cout << "Starting XLSX interpreter\n";
+//
+//    std::vector<std::string>* xlsxFiles = getXlsxFiles("files");
+//
+//    for (std::string file : *xlsxFiles) {
+//        Book* book = loadFile(file);
+//        auto columns = getColummnNames(book->getSheet(0));
+//        for (std::string column : *columns) {
+//            std::cout << column << "|";
+//        }
+//        std::cout << "\t\tfile: " << file << "\n";
+//    }
+//
+//    return xlsxFiles;
+//
+//}
 
 int XLSXGrouper(std::vector<std::string>* xlsxFiles) {
 
@@ -286,9 +286,11 @@ std::vector<std::string>* groupByYear_T2(std::vector<std::string>* input, int ye
     return result;
 }
 
-// INSERT INTO nome_tabella (time_of_publishing, time_of_scraping, link, place, prezzo, titolo, site_id, product_id, note)
-// VALUES('2023-09-27 10:00:00', '2023-09-27 12:30:00', 'http://www.example.com', 'Luogo di esempio', 99.99, 'Titolo di esempio', 1, 1, 'Nota di esempio');
-
+OpenXLSX::XLDocument loadFile(std::string filepath) {
+    OpenXLSX::XLDocument doc = OpenXLSX::XLDocument();
+    doc.open(filepath);
+    return doc;
+}
 
 std::string extractUnixDateTime(const std::string& inputString) {
     size_t posUnderscore = inputString.rfind('_');
@@ -303,21 +305,23 @@ std::string extractUnixDateTime(const std::string& inputString) {
     }
 }
 
-std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& logFile) {
+// "INSERT INTO nome_tabella (time_of_publishing, time_of_scraping, link, place, prezzo, titolo, note) \n VALUES \n"
+std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& logFile, int* totalRows, int* readRows) {
 
-    // "INSERT INTO nome_tabella (time_of_publishing, time_of_scraping, link, place, prezzo, titolo, note) \n VALUES \n"
-    
+    //Log
+    logFile << "Opening File " + fileName << "\n";
+    int ignoredRows = 0;
+
     //Load XLSX
-    Book* book = loadFile(fileName);
-    Sheet* sheet = book->getSheet(0);
+    OpenXLSX::XLDocument book = loadFile(fileName);
+    OpenXLSX::XLWorksheet sheet = book.workbook().sheet(1);
 
     //Build vector
     std::vector<std::string>* entries = new std::vector<std::string>();
 
     //Read file    
-    for (int row = 1; row < sheet->lastRow(); row++) {
+    for (int row = 2; row < sheet.rowCount(); row++) {
 
-        std::wstring wStr;
         std::string link, price, title, place, time_of_publishing, time_of_scraping, note, finalString, site_id, product_id;
 
         // get Time info from file
@@ -331,30 +335,41 @@ std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& log
         std::time_t timestamp = static_cast<std::time_t>(unixTimestamp);
         std::tm* tmInfo = std::localtime(&timestamp);
 
+
         // get link *
         {
-            wStr = sheet->readStr(row, 1) == NULL ? L"_" : sheet->readStr(row, 1);
-            if (wStr == L"_") {
-                ignoreFile(logFile, 1, fileName, row);
+            OpenXLSX::XLCell linkCell = sheet.cell(row, 2);
+
+            if (linkCell.value().type() == OpenXLSX::XLValueType::Empty) {
+                ignoredRows++;
+                logInvalidRow(logFile, 1, fileName, row);
                 continue;
             }
-            link = "CONCAT(\'" + std::string(wStr.begin(), wStr.end()) + "\')";
+
+            link = linkCell.value().get<std::string>();
+
+            link = "CONCAT(\'" + link + "\')";
         }
 
         // get price *
         {
-            wStr = sheet->readStr(row, 2) == NULL ? L"_" : sheet->readStr(row, 2);
-            if (wStr == L"_") {
-                ignoreFile(logFile, 2, fileName, row);
-                continue;
-            }
-            std::string price_dirty = std::string(wStr.begin(), wStr.end());
-            if (price_dirty.find("\\n") != std::string::npos || price_dirty.find("GRATIS") != std::string::npos) {
-                ignoreFile(logFile, 2, fileName, row);
+
+            OpenXLSX::XLCell priceCell = sheet.cell(row, 3);
+
+            if (priceCell.value().type() == OpenXLSX::XLValueType::Empty) {
+                ignoredRows++;
+                logInvalidRow(logFile, 2, fileName, row);
                 continue;
             }
 
-            price = "";
+            std::string price_dirty = priceCell.value().get<std::string>();;
+
+            if (price_dirty.find("\\n") != std::string::npos || price_dirty.find("GRATIS") != std::string::npos) {
+                ignoredRows++;
+                logInvalidRow(logFile, 2, fileName, row);
+                continue;
+            }
+
             for (char character : price_dirty) {
                 if (character >= 0)
                     if (std::isdigit(character)) {
@@ -369,11 +384,16 @@ std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& log
 
         // get title *
         {
-            wStr = sheet->readStr(row, 3) == NULL ? L"_" : sheet->readStr(row, 3);
-            if (wStr == L"_") {
-                ignoreFile(logFile, 3, fileName, row);
+
+            OpenXLSX::XLCell titleCell = sheet.cell(row, 4);
+
+            if (titleCell.value().type() == OpenXLSX::XLValueType::Empty) {
+                ignoredRows++;
+                logInvalidRow(logFile, 3, fileName, row);
                 continue;
             }
+
+            title = titleCell.value().get<std::string>();
 
             // Remove ' and "
             size_t apostrohePos = title.find('\'');
@@ -396,20 +416,24 @@ std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& log
 
 
             // Have concat function, to avoid &
-            title = "CONCAT(\'" + std::string(wStr.begin(), wStr.end()) + "\')";
+            title = "CONCAT(\'" + title + "\')";
 
         }
 
         // get place
         {
-            wStr = sheet->readStr(row, 4) == NULL ? L"_" : sheet->readStr(row, 4);
-            place = '\"' + std::string(wStr.begin(), wStr.end()) + '\"';
+
+            OpenXLSX::XLCell placeCell = sheet.cell(row, 5);
+
+            place = placeCell.value().get<std::string>();
 
             // Remove '
             size_t apostrohePos = place.find('\'');
             if (apostrohePos != std::string::npos) {
                 place.replace(apostrohePos, 1, 1, ' ');
             }
+
+            place = '\"' + place + '\"';
 
         }
 
@@ -435,20 +459,27 @@ std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& log
 
         // get TOP
         {
-            wStr = sheet->readStr(row, 5) == NULL ? L"_" : sheet->readStr(row, 5);
-            time_of_publishing = std::string(wStr.begin(), wStr.end());
+            OpenXLSX::XLCell TOPCell = sheet.cell(row, 6);
 
-            if (time_of_publishing.find("(") != std::string::npos || time_of_publishing == "_") { // is place or empty, set as TOS
+            if (TOPCell.value().get<std::string>() == "")
+                time_of_publishing = "_";
+            else
+                time_of_publishing = TOPCell.value().get<std::string>();
+            
+            // is place or empty, set as TOS
+            if (time_of_publishing.find("(") != std::string::npos || time_of_publishing == "_") {
                 time_of_publishing = time_of_scraping;
             }
 
-            else if (time_of_publishing.find("Oggi") != std::string::npos || time_of_publishing.find("Ieri") != std::string::npos) {// replace date
+            // replace date 'Oggi' or 'Ieri'
+            else if (time_of_publishing.find("Oggi") != std::string::npos || time_of_publishing.find("Ieri") != std::string::npos || time_of_publishing.find("alle") != std::string::npos) {
                 if (tmInfo != nullptr) {
                     int year = tmInfo->tm_year + 1900;
                     int month = tmInfo->tm_mon + 1;
                     int day = tmInfo->tm_mday;
-                    int hour = std::stoi(time_of_publishing.substr(11, 2));
-                    int minute = std::stoi(time_of_publishing.substr(14, 2));
+                    int hourIndex = time_of_publishing.find("alle") + 4 + 1;
+                    int hour = std::stoi(time_of_publishing.substr(hourIndex, 2));
+                    int minute = std::stoi(time_of_publishing.substr(hourIndex+3, 2));
 
                     std::stringstream formattedDateTime;
                     formattedDateTime << std::setfill('0') << std::setw(2) << day << "/"
@@ -459,8 +490,9 @@ std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& log
                     time_of_publishing = "STR_TO_DATE(\'" + formattedDateTime.str() + "\', \'%d/%m/%Y %H:%i\')";
                 }
             }
-                       
-            else { //
+
+            // is datetime format
+            else {
                 for (int i = 0; i < 2; i++) {
                     size_t pos = time_of_publishing.find('-');
                     if (pos != std::string::npos) {
@@ -468,7 +500,15 @@ std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& log
 
                     }
                 }
-                time_of_publishing = "STR_TO_DATE(\'" + time_of_publishing + "\', \'%d/%m/%Y %H:%i\')";
+                if (std::count(time_of_publishing.begin(), time_of_publishing.end(), ':') > 1) {
+                    time_of_publishing = time_of_publishing.substr(0, 16);
+                }
+                if (time_of_publishing.find('/') > 3) { // check if year is first or day
+                    time_of_publishing = "STR_TO_DATE(\'" + time_of_publishing + "\', \'%Y/%m/%d %H:%i\')";
+                }
+                else {
+                    time_of_publishing = "STR_TO_DATE(\'" + time_of_publishing + "\', \'%d/%m/%Y %H:%i\')";
+                }
             }
         }
 
@@ -485,28 +525,34 @@ std::vector<std::string>* getEntries_t1(std::string fileName, std::ofstream& log
         // push into vector
         entries->push_back(finalString);
 
+
     }
+
+    *totalRows += sheet.rowCount();
+    *readRows += sheet.rowCount() - ignoredRows;
+
+    book.close();
 
     return entries;
 }
 
-std::vector<std::string>* getEntries_t2(std::string fileName, std::ofstream& logFile) {
+// "INSERT INTO nome_tabella (time_of_publishing, time_of_scraping, link, place, prezzo, titolo, note) \n VALUES \n"
+std::vector<std::string>* getEntries_t2(std::string fileName, std::ofstream& logFile, int* totalRows, int* readRows) {
 
-    // "INSERT INTO nome_tabella (time_of_publishing, time_of_scraping, link, place, prezzo, titolo, note) \n VALUES \n"
+    //Log
+    logFile << "Opening File " + fileName << "\n";
+    int ignoredRows = 0;
 
     //Load XLSX
-    Book* book = loadFile(fileName);
-    if (book == nullptr)
-        return nullptr;
-    Sheet* sheet = book->getSheet(0);
+    OpenXLSX::XLDocument book = loadFile(fileName);
+    OpenXLSX::XLWorksheet sheet = book.workbook().sheet(1);
 
     //Build vector
     std::vector<std::string>* entries = new std::vector<std::string>();
 
     //Read file    
-    for (int row = 1; row < sheet->lastRow(); row++) {
+    for (int row = 2; row < sheet.rowCount(); row++) {
 
-        std::wstring wStr;
         std::string link, price, title, place, time_of_publishing, time_of_scraping, note, finalString;
 
         // get Time info from file
@@ -525,28 +571,37 @@ std::vector<std::string>* getEntries_t2(std::string fileName, std::ofstream& log
 
         // get link *
         {
-            wStr = sheet->readStr(row, 4) == NULL ? L"_" : sheet->readStr(row, 4);
-            if (wStr == L"_") {
-                ignoreFile(logFile, 1, fileName, row);
+
+            OpenXLSX::XLCell linkCell = sheet.cell(row, 5);
+
+            if (linkCell.value().type() == OpenXLSX::XLValueType::Empty) {
+                ignoredRows++;
+                logInvalidRow(logFile, 1, fileName, row);
                 continue;
             }
-            link = "CONCAT(\'" + std::string(wStr.begin(), wStr.end()) + "\')";
+
+            link = linkCell.value().get<std::string>();
+
+            link = "CONCAT(\'" + link + "\')";
         }
 
         // get price *
         {
-            wStr = sheet->readStr(row, 3) == NULL ? L"_" : sheet->readStr(row, 3);
-            if (wStr == L"_") {
-                ignoreFile(logFile, 2, fileName, row);
-                continue;
-            }
-            std::string price_dirty = std::string(wStr.begin(), wStr.end());
-            if (price_dirty.find("\\n") != std::string::npos || price_dirty.find("GRATIS") != std::string::npos) {
-                ignoreFile(logFile, 2, fileName, row);
+            OpenXLSX::XLCell priceCell = sheet.cell(row, 4);
+
+            if (priceCell.value().type() == OpenXLSX::XLValueType::Empty) {
+                ignoredRows++;
+                logInvalidRow(logFile, 2, fileName, row);
                 continue;
             }
 
-            price = "";
+            std::string price_dirty = priceCell.value().get<std::string>();;
+
+            if (price_dirty.find("\\n") != std::string::npos || price_dirty.find("GRATIS") != std::string::npos) {
+                logInvalidRow(logFile, 2, fileName, row);
+                continue;
+            }
+
             for (char character : price_dirty) {
                 if (character >= 0)
                     if (std::isdigit(character)) {
@@ -561,12 +616,16 @@ std::vector<std::string>* getEntries_t2(std::string fileName, std::ofstream& log
 
         // get title *
         {
-            wStr = sheet->readStr(row, 0) == NULL ? L"_" : sheet->readStr(row, 0);
-            if (wStr == L"_") {
-                ignoreFile(logFile, 3, fileName, row);
+            OpenXLSX::XLCell titleCell = sheet.cell(row, 1);
+
+            if (titleCell.value().type() == OpenXLSX::XLValueType::Empty) {
+                ignoredRows++;
+                logInvalidRow(logFile, 3, fileName, row);
                 continue;
             }
-            
+
+            title = titleCell.value().get<std::string>();
+
             // Remove ' and "
             size_t apostrohePos = title.find('\'');
             while (apostrohePos != std::string::npos) {
@@ -587,29 +646,32 @@ std::vector<std::string>* getEntries_t2(std::string fileName, std::ofstream& log
             }
 
             // Have concat function, to avoid &
-            title = "CONCAT(\'" + std::string(wStr.begin(), wStr.end()) + "\')";
+            title = "CONCAT(\'" + title + "\')";
             
 
         }
 
         // get place
         {
-            wStr = sheet->readStr(row, 1) == NULL ? L"_" : sheet->readStr(row, 1);
-            place = '\"' + std::string(wStr.begin(), wStr.end()) + '\"';
+
+            OpenXLSX::XLCell placeCell = sheet.cell(row, 2);
+
+            place = placeCell.value().get<std::string>();
 
             // Remove '
             size_t apostrohePos = place.find('\'');
             if (apostrohePos != std::string::npos) {
                 place.replace(apostrohePos, 1, 1, ' ');
             }
+
+            place = '\"' + place + '\"';
         }
 
         // get TOP
         {
-            wStr = sheet->readStr(row, 2) == NULL ? L"_" : sheet->readStr(row, 2);
-            time_of_publishing = '\"' + std::string(wStr.begin(), wStr.end()) + '\"';
-
+            OpenXLSX::XLCell TOPCell = sheet.cell(row, 3);
             time_of_publishing = time_of_scraping;
+
         }
 
         // get note
@@ -627,12 +689,15 @@ std::vector<std::string>* getEntries_t2(std::string fileName, std::ofstream& log
 
     }
 
+    *totalRows += sheet.rowCount();
+    *readRows += sheet.rowCount() - ignoredRows;
+
     return entries;
 }
 
-void ignoreFile(std::ofstream& logFile, int state, std::string filename, int row) {
+void logInvalidRow(std::ofstream& logFile, int state, std::string filename, int row) {
 
-    logFile << "Ignored line " << row << " in file " << filename;
+    logFile << "Ignored row " << row;
     switch (state) {
     default:
         logFile << " -Unhandled\n";

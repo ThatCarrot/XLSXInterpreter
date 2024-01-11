@@ -1,10 +1,16 @@
+// il seguente è il risultato della mia disperazione,
+// non giudicatene il disordine più totale
+
 #include "Functions.h"
 
 int main() {
 	
 	std::string baseString = "INSERT INTO cvp.nome_tabella (time_of_publishing, time_of_scraping, link, place, prezzo, titolo, note) \n VALUES \n";
+	int totalRows, readRows;
 
 	//type 1
+	totalRows = 0;
+	readRows = 0;
 	std::ofstream logFile_t1("../output/log_t1.txt");
 	std::ofstream outputFile_t1("../output/output_t1.txt");
 
@@ -16,7 +22,7 @@ int main() {
 		std::cout << file << "\n";
 
 		// get all entries
-		std::vector<std::string>* entries = getEntries_t1(file, logFile_t1);
+		std::vector<std::string>* entries = getEntries_t1(file, logFile_t1, &totalRows, &readRows);
 
 		// compose finalString
 		for (int i = 0; i < entries->size(); i++) {
@@ -31,10 +37,18 @@ int main() {
 		// delete vector
 		delete entries;
 	}
+
+	logFile_t1 << "\nFINAL CHECK:\n";
+	logFile_t1 << "Total Rows: " << totalRows << "\n";
+	logFile_t1 << "Ignored Rows: " << totalRows - readRows << "\n";
+	logFile_t1 << "Read Rows: " << readRows << "\n";
+
 	outputFile_t1.close();
 	logFile_t1.close();
 
 	//type 2
+	totalRows = 0;
+	readRows = 0;
 	std::ofstream logFile_t2("../output/log_t2.txt");
 	std::ofstream outputFile_t2("../output/output_t2.txt");
 
@@ -46,7 +60,7 @@ int main() {
 		std::cout << file << "\n";
 
 		// get all entries
-		std::vector<std::string>* entries = getEntries_t2(file, logFile_t2);
+		std::vector<std::string>* entries = getEntries_t2(file, logFile_t2, &totalRows, &readRows);
 
 		// compose finalString
 		for (int i = 0; i < entries->size(); i++) {
@@ -61,6 +75,12 @@ int main() {
 		// delete vector
 		delete entries;
 	}
+
+	logFile_t2 << "\nFINAL CHECK:\n";
+	logFile_t2 << "Total Rows: " << totalRows << "\n";
+	logFile_t2 << "Ignored Rows: " << totalRows - readRows << "\n";
+	logFile_t2 << "Read Rows: " << readRows << "\n";
+
 	outputFile_t2.close();
 	logFile_t2.close();
 

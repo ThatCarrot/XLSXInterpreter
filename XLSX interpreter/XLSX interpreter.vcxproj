@@ -107,14 +107,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\Lorenzo\Documents\Code\External\libxl-4.2.0\include_cpp</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Lorenzo\Documents\Progetti\Code\External\OpenXLSX-master\OpenXLSX;C:\Users\Lorenzo\Documents\Progetti\Code\External\OpenXLSX-master\OpenXLSX\build</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\Lorenzo\Documents\Code\External\libxl-4.2.0\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libxl.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\Lorenzo\Documents\Progetti\Code\External\OpenXLSX-master\OpenXLSX\build\RelWithDebInfo;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OpenXLSX.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -125,7 +125,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\Lorenzo\Documents\Code\External\libxl-4.2.0\include_cpp</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Lorenzo\Documents\Progetti\Code\External\OpenXLSX-master\OpenXLSX;C:\Users\Lorenzo\Documents\Progetti\Code\External\OpenXLSX-master\OpenXLSX\build</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -133,8 +133,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libxl.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Users\Lorenzo\Documents\Code\External\libxl-4.2.0\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OpenXLSX.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\Lorenzo\Documents\Progetti\Code\External\OpenXLSX-master\OpenXLSX\build\RelWithDebInfo;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
